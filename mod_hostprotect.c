@@ -104,7 +104,7 @@ static void check_rbl(char *ip, char *resolver, int *status, request_rec *req)
   char *packet;
   fd_set readfds;
 
-  tv.tv_sec = 5;
+  tv.tv_sec = 10;
   tv.tv_usec = 0;
   FD_ZERO(&readfds);
 
@@ -176,6 +176,14 @@ static int hostprotect_handler(request_rec *r)
 
         int purge_status = purge_shm(ip_to_purge);
         if(purge_status == PURGE_OK) {
+
+          /* clear expired cache */
+          int cache_to_clear = clear_shm();
+          if(cache_to_clear != CLEAR_ERR) {
+            if(hp.debug)
+              ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE", MODULE_NAME, cache_to_clear);
+          }
+
           if(hp.debug)
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED FROM CACHE %s", MODULE_NAME, ip_to_purge);
         }

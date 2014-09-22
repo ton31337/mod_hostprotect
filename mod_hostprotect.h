@@ -57,7 +57,8 @@ enum {
   SHM_OK,
   SHM_ERR,
   PURGE_OK,
-  PURGE_ERR
+  PURGE_ERR,
+  CLEAR_ERR
 };
 
 void inline __attribute__((always_inline)) swap_bytes(unsigned char *, char *);
@@ -66,6 +67,42 @@ static void check_rbl(char *, char *, int *, request_rec *);
 static int search_shm(char *);
 static int update_shm(char *);
 static int purge_shm(char *);
+static int clear_shm(void);
+
+static int clear_shm(void)
+{
+  struct shm_info shm_info;
+  struct shmid_ds shmds;
+  int shmid, maxkey;
+  int i = 0;
+  struct hdata *shm;
+  int cache_to_purge = 0;
+
+  /* find the shm segment */
+  maxkey = shmctl(0, SHM_INFO, (void *) &shm_info);
+  for(i = 0; i <= maxkey; ++i) {
+
+    if((shmid = shmctl(i, SHM_STAT, &shmds)) < 0) {
+      continue;
+    }
+
+    /* shm segment found */
+    if(shmds.shm_segsz == SHM_SIZE) {
+      shm = (struct hdata *) shmat(shmid, 0, 0);
+      if(shm->counter < 10) {
+        cache_to_purge++;
+        shmctl(shmid, IPC_RMID, NULL);
+      }
+      shmdt(shm);
+    }
+
+  }
+
+  if(cache_to_purge)
+    return cache_to_purge;
+
+  return CLEAR_ERR;
+}
 
 static int search_shm(char *ip)
 {
