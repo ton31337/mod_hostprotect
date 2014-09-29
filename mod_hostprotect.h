@@ -48,6 +48,7 @@ struct hostprotect {
 
 struct hdata {
   int counter;
+  int expire;
   char ip[16];
 };
 
@@ -89,6 +90,7 @@ static int clear_shm(void)
     /* shm segment found */
     if(shmds.shm_segsz == SHM_SIZE) {
       shm = (struct hdata *) shmat(shmid, 0, 0);
+      /* TODO: add expiration header */
       if(shm->counter < 10) {
         cache_to_purge++;
         shmctl(shmid, IPC_RMID, NULL);
