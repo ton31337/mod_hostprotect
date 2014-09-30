@@ -168,15 +168,6 @@ static int hostprotect_handler(request_rec *r)
     client_ip = ap_get_remote_host(r->connection, r->per_dir_config, REMOTE_NAME, &is_ip);
     if(is_ip) {
 
-      /* clear expired cache on random request */
-      if(!(r->request_time % 512)) {
-        int cache_to_clear = clear_shm(hp.expire);
-        if(cache_to_clear != CLEAR_ERR) {
-        if(hp.debug)
-          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE, EXPIRE TIME %d", MODULE_NAME, cache_to_clear, hp.expire);
-        }
-      }
-
       /* purging */
       if(!strcmp(client_ip, hp.purger) && !strcmp(r->method, "DELETE")) {
 
@@ -199,6 +190,16 @@ static int hostprotect_handler(request_rec *r)
 
       /* cache hit */
       if(cache_hit > 1) {
+  
+        /* clear expired cache on random HIT request */
+        if(!(r->request_time % 512)) {
+          int cache_to_clear = clear_shm(hp.expire);
+          if(cache_to_clear != CLEAR_ERR) {
+          if(hp.debug)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE, EXPIRE TIME %d", MODULE_NAME, cache_to_clear, hp.expire);
+          }
+        }
+
         if(hp.debug)
           ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: CACHE HIT FOR %s (counter %d)", MODULE_NAME, client_ip, cache_hit);
         update_shm(client_ip);
