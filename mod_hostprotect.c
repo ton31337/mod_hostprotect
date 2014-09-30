@@ -178,6 +178,12 @@ static int hostprotect_handler(request_rec *r)
         int purge_status = purge_shm(ip_to_purge);
         if(purge_status == PURGE_OK) {
 
+          int cache_to_clear = clear_shm(hp.expire);
+          if(cache_to_clear != CLEAR_ERR) {
+          if(hp.debug)
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE, EXPIRE TIME %d", MODULE_NAME, cache_to_clear, hp.expire);
+          }
+
           if(hp.debug)
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED FROM CACHE %s", MODULE_NAME, ip_to_purge);
         }
@@ -192,7 +198,7 @@ static int hostprotect_handler(request_rec *r)
       if(cache_hit > 1) {
   
         /* clear expired cache on random HIT request */
-        if(!(r->request_time % 512)) {
+        if(!(r->request_time % 256)) {
           int cache_to_clear = clear_shm(hp.expire);
           if(cache_to_clear != CLEAR_ERR) {
           if(hp.debug)
