@@ -1,6 +1,7 @@
 #define MODULE_NAME "hostprotect"
 #define DEFAULT_RESOLVER "31.220.23.12"
 #define DEFAULT_PURGER "31.220.23.11"
+#define DEFAULT_EXPIRE 1800
 #define SHM_SIZE (sizeof(struct hdata))
 
 /* DNS */
@@ -44,6 +45,7 @@ struct hostprotect {
   unsigned char debug:1;
   char purger[16];
   char resolver[16];
+  int expire;
 } hp;
 
 struct hdata {
@@ -68,9 +70,9 @@ static void check_rbl(char *, char *, int *, request_rec *);
 static int search_shm(char *);
 static int update_shm(char *);
 static int purge_shm(char *);
-static int clear_shm(void);
+static int clear_shm(int);
 
-static int clear_shm(void)
+static int clear_shm(int expire)
 {
   struct shm_info shm_info;
   struct shmid_ds shmds;
@@ -90,8 +92,9 @@ static int clear_shm(void)
     /* shm segment found */
     if(shmds.shm_segsz == SHM_SIZE) {
       shm = (struct hdata *) shmat(shmid, 0, 0);
-      /* TODO: add expiration header */
-      if(shm->counter < 10) {
+      struct timeval ts;
+      int cur = gettimeofday(&ts, NULL);
+      if((cur - shm->expire) > expire || shm->counter < 64) {
         cache_to_purge++;
         shmctl(shmid, IPC_RMID, NULL);
       }
@@ -161,7 +164,10 @@ static int update_shm(char *ip)
     if(shmds.shm_segsz == SHM_SIZE) {
       shm = (struct hdata *) shmat(shmid, 0, 0);
       if(!strcmp(shm->ip, ip)) {
+        struct timeval ts;
+        gettimeofday(&ts, NULL);
         shm->counter++;
+        shm->expire = ts.tv_sec;
         update = 1;
       }
       shmdt(shm);

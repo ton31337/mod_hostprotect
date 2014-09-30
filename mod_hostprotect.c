@@ -8,6 +8,7 @@
   HostProtectResolver "10.2.1.251"
   HostProtectPurger "31.220.23.11"
   HostProtectDebug "On"
+  HostProtectExpire "300"
 
 */
 
@@ -178,10 +179,10 @@ static int hostprotect_handler(request_rec *r)
         if(purge_status == PURGE_OK) {
 
           /* clear expired cache */
-          int cache_to_clear = clear_shm();
+          int cache_to_clear = clear_shm(hp.expire);
           if(cache_to_clear != CLEAR_ERR) {
             if(hp.debug)
-              ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE", MODULE_NAME, cache_to_clear);
+              ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "%s: PURGED %d ITEMS FROM CACHE, EXPIRE TIME %d", MODULE_NAME, cache_to_clear, hp.expire);
           }
 
           if(hp.debug)
@@ -229,6 +230,7 @@ static void hostprotect_module_register_hooks(apr_pool_t *p)
   ap_hook_handler(hostprotect_handler, NULL, NULL, APR_HOOK_FIRST);
   hp.enabled = 0;
   hp.debug = 0;
+  hp.expire = DEFAULT_EXPIRE;
 }
 
 static const char *enable_hostprotect(cmd_parms *cmd, void *cfg, const char arg[])
@@ -236,6 +238,7 @@ static const char *enable_hostprotect(cmd_parms *cmd, void *cfg, const char arg[
   if(arg != NULL && !strncmp(arg, "On", 2)) {
     hp.enabled = 1;
     strncpy(hp.resolver, DEFAULT_RESOLVER, strlen(DEFAULT_RESOLVER));
+    strncpy(hp.purger, DEFAULT_PURGER, strlen(DEFAULT_PURGER));
   }
   return NULL;
 }
@@ -258,6 +261,14 @@ static const char *purger_hostprotect(cmd_parms *cmd, void *cfg, const char arg[
   return NULL;
 }
 
+static const char *expire_hostprotect(cmd_parms *cmd, void *cfg, const char arg[])
+{
+  if(arg != NULL) {
+    hp.expire = atoi(arg);
+  }
+  return NULL;
+}
+
 static const char *debug_hostprotect(cmd_parms *cmd, void *cfg, const char arg[])
 {
   if(arg != NULL && !strncmp(arg, "On", 2)) {
@@ -272,6 +283,7 @@ static const command_rec hostprotect_module_directives[] =
   AP_INIT_TAKE1("HostProtectResolver", resolver_hostprotect, NULL, RSRC_CONF, "Set resolver IP for HostProtect module."),
   AP_INIT_TAKE1("HostProtectPurger", purger_hostprotect, NULL, RSRC_CONF, "Set IP which can purge data from cache."),
   AP_INIT_TAKE1("HostProtectDebug", debug_hostprotect, NULL, RSRC_CONF, "Enable/Disable debug level."),
+  AP_INIT_TAKE1("HostProtectExpire", expire_hostprotect, NULL, RSRC_CONF, "Set expire time of cache."),
   {NULL}
 };
 
