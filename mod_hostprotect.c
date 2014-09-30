@@ -105,7 +105,7 @@ static void check_rbl(char *ip, char *resolver, int *status, request_rec *req)
   char *packet;
   fd_set readfds;
 
-  tv.tv_sec = 10;
+  tv.tv_sec = 1;
   tv.tv_usec = 0;
   FD_ZERO(&readfds);
 
