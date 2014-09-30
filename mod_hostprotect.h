@@ -94,7 +94,7 @@ static int clear_shm(int expire)
       shm = (struct hdata *) shmat(shmid, 0, 0);
       struct timeval ts;
       int cur = gettimeofday(&ts, NULL);
-      if((cur - shm->expire) > expire || shm->counter < 64) {
+      if((cur - shm->expire) > expire || shm->counter < 32) {
         cache_to_purge++;
         shmctl(shmid, IPC_RMID, NULL);
       }
